@@ -4,12 +4,40 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 )
+
+func getIPAddressFromEchoserver(appURL string) string {
+
+	httpClient := http.Client{
+		Timeout: time.Duration(45 * time.Second),
+	}
+
+	var result *http.Response
+	Eventually(func() int {
+		var err error
+		result, err = httpClient.Get(appURL)
+		if err != nil {
+			fmt.Fprintf(GinkgoWriter, "Failed to get response from %s: %v\n", appURL, err)
+			return -1
+		}
+		if result != nil && result.StatusCode != 200 {
+			fmt.Fprintf(GinkgoWriter, "Failed to get response from %s: StatusCode %v\n", appURL, result.StatusCode)
+		}
+		return result.StatusCode
+	}, "300s", "45s").Should(Equal(200))
+
+	body, err := ioutil.ReadAll(result.Body)
+	Expect(err).NotTo(HaveOccurred())
+	re := regexp.MustCompile("client_address=(.*)")
+
+	return re.FindAllStringSubmatch(string(body), -1)[0][0]
+}
 
 var _ = K8SLBDescribe("Deploy workload", func() {
 
@@ -51,11 +79,11 @@ var _ = K8SLBDescribe("Deploy workload", func() {
 
 })
 
-var _ = K8SLBDescribe("When deploying a service", func() {
+var _ = K8SLBDescribe("When deploying a loadbalancer", func() {
 	var loadbalancerAddress string
 
-	FContext("with externalTrafficPolicy to local", func() {
-		It("has the real source client IPs", func() {
+	Context("with externalTrafficPolicy to local", func() {
+		It("shows a different source client IPs", func() {
 			deployEchoserver := runner.RunKubectlCommand("create", "-f", echoserverLBSpec)
 			Eventually(deployEchoserver, "120s").Should(gexec.Exit(0))
 			rolloutWatch := runner.RunKubectlCommand("rollout", "status", "deployment/echoserver", "-w")
@@ -68,29 +96,14 @@ var _ = K8SLBDescribe("When deploying a service", func() {
 			}, "240s", "5s").Should(Not(Equal("")))
 
 			appURL := fmt.Sprintf("http://%s", loadbalancerAddress)
-			timeout := time.Duration(45 * time.Second)
-			httpClient := http.Client{
-				Timeout: timeout,
-			}
+			ipAddress := getIPAddressFromEchoserver(appURL)
 
-			var result *http.Response
-			ipAddress := "111" //getMyIP
-			Eventually(func() int {
-				var err error
-				result, err = httpClient.Get(appURL)
-				if err != nil {
-					fmt.Fprintf(GinkgoWriter, "Failed to get response from %s: %v\n", appURL, err)
-					return -1
-				}
-				if result != nil && result.StatusCode != 200 {
-					fmt.Fprintf(GinkgoWriter, "Failed to get response from %s: StatusCode %v\n", appURL, result.StatusCode)
-				}
-				return result.StatusCode
-			}, "300s", "45s").Should(Equal(200))
+			updateTrafficPolicy := runner.RunKubectlCommand("patch", "svc/echoserver-lb", "-p", "'{\"spec\":{\"externalTrafficPolicy\":\"Local\"}}'")
+			Eventually(updateTrafficPolicy).Should(gexec.Exit(0))
 
-			body, err := ioutil.ReadAll(result.Body)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(string(body)).To(ContainSubstring(ipAddress))
+			newIPAddress := getIPAddressFromEchoserver(appURL)
+
+			Expect(newIPAddress).NotTo(BeEquivalentTo(ipAddress))
 		})
 
 	})
