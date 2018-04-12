@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    name: echoserver-lb
+    name: echoserver
   name: echoserver
 spec:
   ports:
