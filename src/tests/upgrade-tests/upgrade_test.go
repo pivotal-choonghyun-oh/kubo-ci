@@ -43,8 +43,14 @@ var _ = Describe("Upgrade components", func() {
 	})
 
 	It("upgrades stemcell", func() {
+		var requestLossThreshold float64
+		if testconfig.Iaas == "vsphere" {
+			requestLossThreshold = -1.0
+		} else {
+			requestLossThreshold = 0.99
+		}
 		applyUpdateStemcellVersionOps(filepath.Join(testconfig.CFCR.DeploymentPath, "manifests", "cfcr.yml"), testconfig.CFCR.UpgradeToStemcellVersion)
-		upgradeAndMonitorAvailability("scripts/deploy-k8s-instance.sh", "stemcell", 0.99)
+		upgradeAndMonitorAvailability("scripts/deploy-k8s-instance.sh", "stemcell", requestLossThreshold)
 	})
 })
 
