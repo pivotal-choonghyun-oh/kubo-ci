@@ -14,7 +14,7 @@
         release: haproxy
         properties:
           ha_proxy:
-            backend_port: 30433
+            backend_port: 80
 
 - type: replace
   path: /releases/-

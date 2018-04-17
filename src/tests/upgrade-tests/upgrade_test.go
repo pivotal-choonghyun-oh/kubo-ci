@@ -24,6 +24,9 @@ var loadbalancerAddress string
 
 var _ = Describe("Upgrade components", func() {
 	nginxSpec := test_helpers.PathFromRoot("specs/nginx-lb.yml")
+	if testconfig.Iaas == "vsphere" {
+		nginxSpec = test_helpers.PathFromRoot("specs/nginx.yml")
+	}
 
 	BeforeEach(func() {
 		deployNginx := k8sRunner.RunKubectlCommand("create", "-f", nginxSpec)
@@ -69,7 +72,15 @@ func applyUpdateStemcellVersionOps(manifestPath, stemcellVersion string) {
 func upgradeAndMonitorAvailability(pathToScript string, component string, requestLossThreshold float64) {
 	By("Getting the LB address")
 	Eventually(func() string {
-		loadbalancerAddress = k8sRunner.GetLBAddress("nginx", testconfig.Iaas)
+		if testconfig.Iaas == "vsphere" {
+			director := test_helpers.NewDirector(testconfig.Bosh)
+			deployment, err := director.FindDeployment(testconfig.Bosh.Deployment)
+			Expect(err).NotTo(HaveOccurred())
+			vms := test_helpers.DeploymentVmsOfType(deployment, "haproxy", test_helpers.VmRunningState)
+			loadbalancerAddress = vms[0].IPs[0]
+		} else {
+			loadbalancerAddress = k8sRunner.GetLBAddress("nginx", testconfig.Iaas)
+		}
 		return loadbalancerAddress
 	}, "120s", "5s").Should(Not(Equal("")))
 
@@ -119,6 +130,9 @@ func upgradeAndMonitorAvailability(pathToScript string, component string, reques
 	}(doneChannel, curlNginx)
 
 	By(fmt.Sprintf("Running %s upgrade", component))
+	if testconfig.Iaas == "vsphere" {
+		os.Setenv("DEPLOYMENT_OPS_FILE", test_helpers.PathFromRoot("manifests/ops-files/add-haproxy.yml"))
+	}
 	script := test_helpers.PathFromRoot(pathToScript)
 	cmd := exec.Command(script)
 	cmd.Stdout = os.Stdout
