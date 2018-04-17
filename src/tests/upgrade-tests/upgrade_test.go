@@ -26,7 +26,7 @@ var _ = Describe("Upgrade components", func() {
 	BeforeEach(func() {
 		nginxSpec = test_helpers.PathFromRoot("specs/nginx-lb.yml")
 		if testconfig.Iaas == "vsphere" {
-			nginxSpec = test_helpers.PathFromRoot("specs/nginx.yml")
+			nginxSpec = test_helpers.PathFromRoot("specs/nginx-specified-nodeport.yml")
 		}
 
 		deployNginx := k8sRunner.RunKubectlCommand("create", "-f", nginxSpec)
