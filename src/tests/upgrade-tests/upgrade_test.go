@@ -20,15 +20,15 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-var loadbalancerAddress string
+var loadbalancerAddress, nginxSpec string
 
 var _ = Describe("Upgrade components", func() {
-	nginxSpec := test_helpers.PathFromRoot("specs/nginx-lb.yml")
-	if testconfig.Iaas == "vsphere" {
-		nginxSpec = test_helpers.PathFromRoot("specs/nginx.yml")
-	}
-
 	BeforeEach(func() {
+		nginxSpec = test_helpers.PathFromRoot("specs/nginx-lb.yml")
+		if testconfig.Iaas == "vsphere" {
+			nginxSpec = test_helpers.PathFromRoot("specs/nginx.yml")
+		}
+
 		deployNginx := k8sRunner.RunKubectlCommand("create", "-f", nginxSpec)
 		Eventually(deployNginx, "60s").Should(gexec.Exit(0))
 	})
