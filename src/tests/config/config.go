@@ -67,7 +67,6 @@ type IntegrationTests struct {
 	IncludeMultiAZ          bool `json:"include_multiaz"`
 	IncludeOSSOnly          bool `json:"include_oss_only"`
 	IncludePersistentVolume bool `json:"include_persistent_volume"`
-	IncludeRBAC             bool `json:"include_rbac"`
 }
 
 type UpgradeTests struct {
@@ -75,12 +74,11 @@ type UpgradeTests struct {
 }
 
 type Kubernetes struct {
-	AuthorizationMode string `json:"authorization_mode"`
-	MasterHost        string `json:"master_host"`
-	MasterPort        int    `json:"master_port"`
-	PathToKubeConfig  string `json:"path_to_kube_config"`
-	TLSCert           string `json:"tls_cert"`
-	TLSPrivateKey     string `json:"tls_private_key"`
+	MasterHost       string `json:"master_host"`
+	MasterPort       int    `json:"master_port"`
+	PathToKubeConfig string `json:"path_to_kube_config"`
+	TLSCert          string `json:"tls_cert"`
+	TLSPrivateKey    string `json:"tls_private_key"`
 }
 
 type CFCR struct {
